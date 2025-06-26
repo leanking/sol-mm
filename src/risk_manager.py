@@ -25,6 +25,13 @@ class RiskManager:
         self.daily_trades = 0
         self.last_reset_date = None
         
+    def _safe_abs(self, value) -> float:
+        """Safely compute abs() only for numeric types, else return 0.0 and log a warning."""
+        if isinstance(value, (int, float)):
+            return abs(value)
+        self.logger.warning(f"Tried to call abs() on non-numeric type: {type(value)}, value: {value}")
+        return 0.0
+    
     def check_inventory_limits(self, inventory: float) -> Tuple[bool, str]:
         """Check if inventory is within acceptable limits.
         
@@ -36,7 +43,7 @@ class RiskManager:
         """
         max_inventory = self.risk_config.get('max_inventory', 10.0)
         
-        if abs(inventory) > max_inventory:
+        if self._safe_abs(inventory) > max_inventory:
             reason = f"Inventory {inventory:.4f} exceeds limit {max_inventory}"
             return False, reason
         
@@ -74,7 +81,7 @@ class RiskManager:
             total_margin = 0.0
             for position in positions:
                 if position.get('size', 0) != 0:  # Only consider open positions
-                    margin = abs(position.get('notional', 0) / position.get('leverage', 1))
+                    margin = self._safe_abs(position.get('notional', 0) / position.get('leverage', 1))
                     total_margin += margin
             
             # Get available balance (assuming USDC)
