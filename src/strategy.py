@@ -483,7 +483,13 @@ class MarketMakingStrategy:
             
             mid_price = ticker['last']
             self.last_mid_price = mid_price
-            spot_inventory = balance_result.get('value')
+            # Extract numeric spot inventory from balance dict
+            balance = balance_result.get('value')
+            spot_inventory = 0.0
+            if balance and isinstance(balance, dict):
+                base_currency = self.spot_symbol.split('/')[0]
+                if base_currency in balance and isinstance(balance[base_currency], dict):
+                    spot_inventory = balance[base_currency].get('free', 0.0)
             positions = positions_result.get('value')
             perp_position = 0.0
             if positions:
@@ -512,7 +518,6 @@ class MarketMakingStrategy:
             step_times['funding'] = time.time() - t2
             
             t3 = time.time()
-            balance = balance_result.get('value')
             positions = positions_result.get('value') or []
             risk_safe, violations = self.risk_manager.comprehensive_risk_check(
                 spot_inventory, volatility, balance, positions
