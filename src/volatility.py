@@ -121,13 +121,18 @@ class VolatilityCalculator:
             # Check OHLCV cache first
             ohlcv = self.get_cached_ohlcv(symbol, timeframe, period + 1)
             if not ohlcv:
+                self.logger.warning(f"No OHLCV data for {symbol} {timeframe} {period+1}")
+            else:
+                self.logger.debug(f"Fetched OHLCV for {symbol}: {ohlcv}")
+            
+            if not ohlcv:
                 # Fetch OHLCV data
                 ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=period + 1)
                 if ohlcv:
                     self.cache_ohlcv_data(symbol, timeframe, period + 1, ohlcv)
             
-            if len(ohlcv) < period + 1:
-                self.logger.warning(f"Insufficient data for ATR calculation: {len(ohlcv)} < {period + 1}")
+            if not ohlcv or len(ohlcv) < period + 1:
+                self.logger.warning(f"Insufficient data for ATR calculation: {len(ohlcv) if ohlcv else 0} < {period + 1}")
                 return 0.0
             
             # Calculate True Range for each period
@@ -193,7 +198,11 @@ class VolatilityCalculator:
             
             # Get current price
             ticker = self.exchange.fetch_ticker(symbol)
+            if not ticker or 'last' not in ticker:
+                self.logger.warning(f"Ticker fetch failed for {symbol}: {ticker}")
+                return 0.0
             current_price = ticker['last']
+            self.logger.debug(f"Current price for {symbol}: {current_price}")
             
             if current_price <= 0:
                 self.logger.warning(f"Invalid price for {symbol}: {current_price}")
@@ -201,9 +210,11 @@ class VolatilityCalculator:
             
             # Calculate ATR
             atr = self.calculate_atr(symbol, period, timeframe)
+            self.logger.debug(f"ATR used for volatility for {symbol}: {atr}")
             
             # Calculate volatility
             volatility = atr / current_price
+            self.logger.debug(f"Volatility for {symbol}: {volatility}")
             
             # Cache the result
             self.volatility_cache[cache_key] = {
