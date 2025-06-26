@@ -375,6 +375,21 @@ class MarketMakingStrategy:
         except Exception as e:
             self.logger.log_error(e, "Cancelling spot orders")
     
+    def _normalize_position_size(self, perp_position: Any) -> float:
+        """Utility to ensure perp_position is always a float."""
+        if isinstance(perp_position, dict):
+            return perp_position.get('size', 0.0)
+        elif isinstance(perp_position, list):
+            if perp_position and isinstance(perp_position[0], dict):
+                return perp_position[0].get('size', 0.0)
+            else:
+                return 0.0
+        elif isinstance(perp_position, (int, float)):
+            return perp_position
+        else:
+            self.logger.warning(f"Unexpected type for perp_position: {type(perp_position)}")
+            return 0.0
+    
     def calculate_funding_income(self, perp_position: float, funding_rate: float) -> float:
         """Calculate daily funding income.
         
@@ -386,17 +401,7 @@ class MarketMakingStrategy:
             Daily funding income
         """
         try:
-            # Defensive: ensure perp_position is a float
-            if isinstance(perp_position, dict):
-                perp_position = perp_position.get('size', 0.0)
-            elif isinstance(perp_position, list):
-                if perp_position and isinstance(perp_position[0], dict):
-                    perp_position = perp_position[0].get('size', 0.0)
-                else:
-                    perp_position = 0.0
-            elif not isinstance(perp_position, (int, float)):
-                self.logger.warning(f"Unexpected type for perp_position in funding income: {type(perp_position)}")
-                perp_position = 0.0
+            perp_position = self._normalize_position_size(perp_position)
             # Defensive: ensure funding_rate is a float
             if not isinstance(funding_rate, (int, float)):
                 self.logger.warning(f"Unexpected type for funding_rate in funding income: {type(funding_rate)}")
@@ -481,6 +486,7 @@ class MarketMakingStrategy:
                     if position.get('symbol') == self.perp_symbol:
                         perp_position = position.get('size', 0.0)
                         break
+            perp_position = self._normalize_position_size(perp_position)
             # Additional logging for debugging
             self.logger.debug(f"[DEBUG] Pre-funding: perp_position type={type(perp_position)}, value={perp_position}")
             t1 = time.time()
