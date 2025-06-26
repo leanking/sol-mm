@@ -48,6 +48,9 @@ class RiskManager:
         Returns:
             Tuple of (is_safe, reason)
         """
+        if not isinstance(inventory, (int, float)):
+            self.logger.warning(f"Non-numeric inventory passed to check_inventory_limits: {type(inventory)}, value: {inventory}")
+            inventory = 0.0
         max_inventory = self.risk_config.get('max_inventory', 10.0)
         
         if self._safe_abs(inventory) > max_inventory:
@@ -87,8 +90,17 @@ class RiskManager:
             # Calculate total margin used
             total_margin = 0.0
             for position in positions:
-                if position.get('size', 0) != 0:  # Only consider open positions
-                    margin = self._safe_abs(position.get('notional', 0) / position.get('leverage', 1))
+                size = position.get('size', 0)
+                if not isinstance(size, (int, float)):
+                    self.logger.warning(f"Non-numeric position size in margin check: {type(size)}, value: {size}")
+                    continue
+                if size != 0:  # Only consider open positions
+                    notional = position.get('notional', 0)
+                    leverage = position.get('leverage', 1)
+                    if not isinstance(notional, (int, float)) or not isinstance(leverage, (int, float)):
+                        self.logger.warning(f"Non-numeric notional/leverage in margin check: notional={notional}, leverage={leverage}")
+                        continue
+                    margin = self._safe_abs(notional / leverage)
                     total_margin += margin
             
             # Get available balance (assuming USDC)
