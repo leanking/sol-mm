@@ -147,40 +147,30 @@ class MarketMaker:
             return False
     
     def run_single_cycle(self) -> bool:
-        """Run a single market making cycle with performance monitoring.
-        
-        Returns:
-            True if cycle completed successfully, False otherwise
-        """
+        """Run a single market making cycle with performance monitoring and step profiling."""
         cycle_start_time = time.time()
-        
+        step_times = {}
         try:
             strategy = self.components['strategy']
             logger = self.components['logger']
-            
-            # Execute strategy cycle
+            t0 = time.time()
             result = strategy.execute_strategy_cycle()
-            
-            # Calculate cycle time
+            step_times['execute_strategy_cycle'] = time.time() - t0
             cycle_time = time.time() - cycle_start_time
             self.last_cycle_time = cycle_time
             self.cycle_times.append(cycle_time)
-            
-            # Keep only last 100 cycle times
             if len(self.cycle_times) > 100:
                 self.cycle_times = self.cycle_times[-100:]
-            
             if result['success']:
                 logger.info(f"Cycle completed: Mid={result['mid_price']:.4f}, "
                           f"Spread={result['spread']:.4f}, Vol={result['volatility']:.4f}, "
-                          f"Time={cycle_time:.3f}s")
-                
-                # Log key metrics
+                          f"Time={cycle_time:.3f}s, StepTimes={step_times}")
                 logger.log_inventory(
                     result['spot_inventory'],
                     result['funding_income']
                 )
-                
+                if cycle_time > 5.0:
+                    logger.warning(f"Cycle time exceeded 5s: {cycle_time:.3f}s")
                 return True
             else:
                 if result.get('trading_paused'):
@@ -188,12 +178,10 @@ class MarketMaker:
                 else:
                     logger.error(f"Cycle failed: {result['error']}")
                 return False
-                
         except Exception as e:
             cycle_time = time.time() - cycle_start_time
             self.last_cycle_time = cycle_time
             self.cycle_times.append(cycle_time)
-            
             self.components['logger'].log_error(e, "Strategy cycle")
             return False
     

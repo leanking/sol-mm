@@ -4,6 +4,7 @@ import time
 from config import ConfigManager
 from logger import MarketMakerLogger
 from performance_optimizer import PerformanceOptimizer
+import random
 
 class HyperliquidExchange:
     """Interface for Hyperliquid exchange operations."""
@@ -168,6 +169,17 @@ class HyperliquidExchange:
             self.logger.log_error(e, "Finding SOL markets")
             return None, None
     
+    def _retry_api_call(self, func, *args, max_retries=3, base_delay=0.2, **kwargs):
+        for attempt in range(max_retries):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise
+                delay = base_delay * (2 ** attempt) * (1 + random.uniform(-0.2, 0.2))
+                self.logger.warning(f"Retrying API call due to error: {e} (attempt {attempt+1})")
+                time.sleep(delay)
+    
     def get_ticker(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Get current ticker information with caching.
         
@@ -177,40 +189,27 @@ class HyperliquidExchange:
         Returns:
             Ticker information dictionary
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('get_ticker')
         def _get_ticker():
             try:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return None
-                
-                # Check cache first
                 cached_ticker = self.performance_optimizer.get_cached_price(symbol)
                 if cached_ticker:
                     return cached_ticker
-                
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('get_ticker'):
-                    time.sleep(0.05)  # Wait 50ms
-                
+                    time.sleep(0.05)
                 start_time = time.time()
-                ticker = self.exchange.fetch_ticker(symbol)
+                ticker = self._retry_api_call(self.exchange.fetch_ticker, symbol)
                 duration = time.time() - start_time
-                
-                # Record API call timing
                 self.performance_optimizer.record_api_call('get_ticker', duration)
-                
-                # Cache the result
                 if ticker:
                     self.performance_optimizer.cache_price_data(symbol, ticker)
-                
                 return ticker
-                
             except Exception as e:
                 self.logger.log_error(e, f"Getting ticker for {symbol}")
                 return None
-        
         return _get_ticker()
     
     def get_order_book(self, symbol: str, limit: int = 20) -> Optional[Dict[str, Any]]:
@@ -223,40 +222,27 @@ class HyperliquidExchange:
         Returns:
             Order book dictionary
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('get_order_book')
         def _get_order_book():
             try:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return None
-                
-                # Check cache first
                 cached_order_book = self.performance_optimizer.get_cached_order_book(symbol)
                 if cached_order_book:
                     return cached_order_book
-                
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('get_order_book'):
-                    time.sleep(0.05)  # Wait 50ms
-                
+                    time.sleep(0.05)
                 start_time = time.time()
-                order_book = self.exchange.fetch_order_book(symbol, limit)
+                order_book = self._retry_api_call(self.exchange.fetch_order_book, symbol, limit)
                 duration = time.time() - start_time
-                
-                # Record API call timing
                 self.performance_optimizer.record_api_call('get_order_book', duration)
-                
-                # Cache the result
                 if order_book:
                     self.performance_optimizer.cache_order_book(symbol, order_book)
-                
                 return order_book
-                
             except Exception as e:
                 self.logger.log_error(e, f"Getting order book for {symbol}")
                 return None
-        
         return _get_order_book()
     
     def get_balance(self) -> Optional[Dict[str, Any]]:
@@ -265,37 +251,27 @@ class HyperliquidExchange:
         Returns:
             Balance dictionary
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('get_balance')
         def _get_balance():
             try:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return None
-                
                 exchange_config = self.config.get_exchange_config()
                 main_wallet = exchange_config.get('main_wallet')
                 if not main_wallet:
                     self.logger.warning("Main wallet address is not set in config.")
                     return None
-                
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('get_balance'):
-                    time.sleep(0.05)  # Wait 50ms
-                
+                    time.sleep(0.05)
                 start_time = time.time()
-                balance = self.exchange.fetch_balance(params={'user': main_wallet})
+                balance = self._retry_api_call(self.exchange.fetch_balance, params={'user': main_wallet})
                 duration = time.time() - start_time
-                
-                # Record API call timing
                 self.performance_optimizer.record_api_call('get_balance', duration)
-                
                 return balance
-                
             except Exception as e:
                 self.logger.log_error(e, "Getting balance")
                 return None
-        
         return _get_balance()
     
     def get_positions(self) -> Optional[List[Dict[str, Any]]]:
@@ -304,42 +280,28 @@ class HyperliquidExchange:
         Returns:
             List of position dictionaries
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('get_positions')
         def _get_positions():
             try:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return None
-                
-                # Get main wallet from config
                 main_wallet = self.config.get('exchange.main_wallet')
                 if not main_wallet:
                     self.logger.warning("Main wallet address is not set in config.")
                     return None
-                
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('get_positions'):
-                    time.sleep(0.05)  # Wait 50ms
-                
-                # For Hyperliquid, we need to fetch positions from futures with user parameter
+                    time.sleep(0.05)
                 self.exchange.options['defaultType'] = 'swap'
-                
                 start_time = time.time()
-                positions = self.exchange.fetch_positions(params={'user': main_wallet})
+                positions = self._retry_api_call(self.exchange.fetch_positions, params={'user': main_wallet})
                 duration = time.time() - start_time
-                
-                # Record API call timing
                 self.performance_optimizer.record_api_call('get_positions', duration)
-                
-                self.exchange.options['defaultType'] = 'spot'  # Reset to spot
-                
+                self.exchange.options['defaultType'] = 'spot'
                 return positions
-                
             except Exception as e:
                 self.logger.log_error(e, "Getting positions")
                 return None
-        
         return _get_positions()
     
     def get_funding_rate(self, symbol: str) -> Optional[float]:
@@ -351,41 +313,28 @@ class HyperliquidExchange:
         Returns:
             Funding rate as decimal
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('get_funding_rate')
         def _get_funding_rate():
             try:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return None
-                
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('get_funding_rate'):
-                    time.sleep(0.05)  # Wait 50ms
-                
-                # Switch to swap/futures mode for funding rate
+                    time.sleep(0.05)
                 self.exchange.options['defaultType'] = 'swap'
-                
                 start_time = time.time()
-                funding_info = self.exchange.fetch_funding_rate(symbol)
+                funding_info = self._retry_api_call(self.exchange.fetch_funding_rate, symbol)
                 duration = time.time() - start_time
-                
-                # Record API call timing
                 self.performance_optimizer.record_api_call('get_funding_rate', duration)
-                
-                self.exchange.options['defaultType'] = 'spot'  # Reset to spot
-                
+                self.exchange.options['defaultType'] = 'spot'
                 if funding_info and 'fundingRate' in funding_info:
                     rate = funding_info['fundingRate']
                     self.logger.log_funding_rate(symbol, rate)
                     return rate
-                
                 return None
-                
             except Exception as e:
                 self.logger.log_error(e, f"Getting funding rate for {symbol}")
                 return None
-        
         return _get_funding_rate()
     
     def place_order(self, symbol: str, side: str, amount: float, price: float, 

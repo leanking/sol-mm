@@ -21,8 +21,8 @@ class VolatilityCalculator:
         self.atr_cache = {}  # Cache ATR values to avoid repeated calculations
         self.volatility_cache = {}  # Cache volatility calculations
         self.ohlcv_cache = {}  # Cache OHLCV data
-        self.cache_ttl = 60  # 60 seconds TTL for volatility data
-        self.ohlcv_cache_ttl = 30  # 30 seconds TTL for OHLCV data
+        self.cache_ttl = 180  # Increased to 180 seconds TTL for volatility data
+        self.ohlcv_cache_ttl = 60  # Increased to 60 seconds TTL for OHLCV data
         
         # Performance monitoring
         self.calculation_times = []

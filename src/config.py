@@ -16,6 +16,15 @@ class ConfigManager:
         self.config_path = config_path
         self.config = self._load_config()
         
+    def _validate_config(self, config: Dict[str, Any]) -> None:
+        required_exchange_fields = ['api_wallet', 'api_wallet_private', 'main_wallet', 'name']
+        exchange = config.get('exchange', {})
+        missing = [f for f in required_exchange_fields if not exchange.get(f)]
+        if missing:
+            raise ValueError(f"Missing required exchange config fields: {', '.join(missing)}")
+        if not config.get('asset', {}).get('symbol'):
+            raise ValueError("Missing required asset config: symbol")
+
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from JSON file and environment variables."""
         try:
@@ -26,6 +35,8 @@ class ConfigManager:
             config['exchange']['api_wallet'] = os.getenv('HYPERLIQUID_API_WALLET')
             config['exchange']['api_wallet_private'] = os.getenv('HYPERLIQUID_API_WALLET_PRIVATE')
             config['exchange']['main_wallet'] = os.getenv('HYPERLIQUID_MAIN_WALLET')
+            
+            self._validate_config(config)
             
             return config
         except FileNotFoundError:

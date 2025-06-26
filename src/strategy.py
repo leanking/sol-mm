@@ -4,6 +4,8 @@ from config import ConfigManager
 from exchange import HyperliquidExchange
 from volatility import VolatilityCalculator
 from risk_manager import RiskManager
+import threading
+import time
 
 class MarketMakingStrategy:
     """Implements the long spot, short perps market making strategy."""
@@ -293,48 +295,57 @@ class MarketMakingStrategy:
             return 0.0
     
     def execute_strategy_cycle(self) -> Dict[str, any]:
-        """Execute one complete strategy cycle.
-        
-        Returns:
-            Dictionary with strategy results
-        """
+        """Execute one complete strategy cycle with concurrent API calls and profiling."""
         try:
-            # Get current market data
-            ticker = self.exchange.get_ticker(self.spot_symbol)
+            step_times = {}
+            t0 = time.time()
+            # Concurrently fetch ticker, balance, and positions
+            ticker_result = {}
+            balance_result = {}
+            positions_result = {}
+            def fetch_ticker():
+                ticker_result['value'] = self.exchange.get_ticker(self.spot_symbol)
+            def fetch_balance():
+                balance_result['value'] = self.exchange.get_balance()
+            def fetch_positions():
+                positions_result['value'] = self.exchange.get_positions()
+            threads = [
+                threading.Thread(target=fetch_ticker),
+                threading.Thread(target=fetch_balance),
+                threading.Thread(target=fetch_positions)
+            ]
+            for th in threads:
+                th.start()
+            for th in threads:
+                th.join()
+            step_times['fetch_ticker_balance_positions'] = time.time() - t0
+            ticker = ticker_result.get('value')
             if not ticker:
                 return {'success': False, 'error': 'Unable to get ticker'}
-            
             mid_price = ticker['last']
             self.last_mid_price = mid_price
-            
-            # Get current inventory and positions
-            spot_inventory = self.get_current_inventory()
-            perp_position = self.get_current_perp_position()
-            
-            # Calculate volatility
+            spot_inventory = balance_result.get('value')
+            perp_position = positions_result.get('value')
+            t1 = time.time()
             volatility = self.volatility_calc.calculate_volatility(
                 self.spot_symbol,
                 self.volatility_config.get('atr_period', 14),
                 self.volatility_config.get('timeframe', '1h')
             )
-            
-            # Get funding rate
+            step_times['volatility'] = time.time() - t1
+            t2 = time.time()
             funding_rate = self.exchange.get_funding_rate(self.perp_symbol)
             if funding_rate is None:
-                # Use default funding rate from config
                 funding_rate = self.config.get('funding_rate_annual', 0.08) / 365
-            
-            # Calculate funding income
             funding_income = self.calculate_funding_income(perp_position, funding_rate)
-            
-            # Risk check
-            balance = self.exchange.get_balance()
-            positions = self.exchange.get_positions() or []
-            
+            step_times['funding'] = time.time() - t2
+            t3 = time.time()
+            balance = balance_result.get('value')
+            positions = positions_result.get('value') or []
             risk_safe, violations = self.risk_manager.comprehensive_risk_check(
                 spot_inventory, volatility, balance, positions
             )
-            
+            step_times['risk'] = time.time() - t3
             if not risk_safe:
                 self.cancel_spot_orders()
                 return {
@@ -342,23 +353,15 @@ class MarketMakingStrategy:
                     'error': f"Risk violations: {', '.join(violations)}",
                     'trading_paused': True
                 }
-            
-            # Calculate quotes
+            t4 = time.time()
             bid_price, ask_price, spread = self.calculate_quotes(mid_price, volatility)
-            
-            # Calculate order size based on inventory
-            order_size = self.inventory_size / 2  # Split between bid and ask
-            
-            # Place spot quotes
+            order_size = self.inventory_size / 2
             spot_order_ids = self.place_spot_quotes(bid_price, ask_price, order_size)
-            
-            # Calculate and place hedge
             required_hedge = self.calculate_hedge_size(spot_inventory)
             hedge_order_id = self.place_hedge_order(required_hedge, perp_position)
-            
-            # Update risk manager
             self.risk_manager.increment_trade_count()
-            
+            step_times['orders'] = time.time() - t4
+            self.logger.info(f"Step timings: {step_times}")
             return {
                 'success': True,
                 'mid_price': mid_price,
@@ -374,7 +377,6 @@ class MarketMakingStrategy:
                 'hedge_order': hedge_order_id is not None,
                 'risk_safe': risk_safe
             }
-            
         except Exception as e:
             self.logger.log_error(e, "Strategy cycle execution")
             return {'success': False, 'error': str(e)}

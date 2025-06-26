@@ -27,9 +27,9 @@ class PerformanceOptimizer:
         
         # Caching
         self.price_cache = {}
-        self.price_cache_ttl = 0.1  # 100ms TTL for price data
+        self.price_cache_ttl = 1.0  # Increased to 1s TTL for price data
         self.order_book_cache = {}
-        self.order_book_cache_ttl = 0.2  # 200ms TTL for order book
+        self.order_book_cache_ttl = 2.0  # Increased to 2s TTL for order book
         
         # Rate limiting
         self.last_api_call = {}
