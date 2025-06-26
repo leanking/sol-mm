@@ -167,9 +167,21 @@ class MarketMaker:
                 logger.info(f"Cycle completed: Mid={result['mid_price']:.4f}, "
                           f"Spread={result['spread']:.4f}, Vol={result['volatility']:.4f}, "
                           f"Time={cycle_time:.3f}s, StepTimes={step_times}")
+                # Defensive: ensure funding_income is a float
+                funding_income = result['funding_income']
+                if isinstance(funding_income, dict):
+                    funding_income = funding_income.get('size', 0.0)
+                elif isinstance(funding_income, list):
+                    if funding_income and isinstance(funding_income[0], dict):
+                        funding_income = funding_income[0].get('size', 0.0)
+                    else:
+                        funding_income = 0.0
+                elif not isinstance(funding_income, (int, float)):
+                    logger.warning(f"Unexpected type for funding_income in log_inventory: {type(funding_income)}")
+                    funding_income = 0.0
                 logger.log_inventory(
                     result['spot_inventory'],
-                    result['funding_income']
+                    funding_income
                 )
                 if cycle_time > 5.0:
                     logger.warning(f"Cycle time exceeded 5s: {cycle_time:.3f}s")
