@@ -1,6 +1,7 @@
 import time
 import signal
 import sys
+import os
 from typing import Dict, Any, Optional
 from config import ConfigManager
 from logger import MarketMakerLogger
@@ -40,8 +41,9 @@ class MarketMaker:
             # Initialize configuration
             self.components['config'] = ConfigManager(self.config_path)
             
-            # Initialize logger
-            self.components['logger'] = MarketMakerLogger()
+            # Initialize logger with log level from environment variable
+            log_level = os.getenv("LOG_LEVEL", "INFO")
+            self.components['logger'] = MarketMakerLogger(log_level=log_level)
             
             # Initialize exchange
             self.components['exchange'] = HyperliquidExchange(
