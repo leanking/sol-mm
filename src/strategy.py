@@ -461,7 +461,13 @@ class MarketMakingStrategy:
             mid_price = ticker['last']
             self.last_mid_price = mid_price
             spot_inventory = balance_result.get('value')
-            perp_position = positions_result.get('value')
+            positions = positions_result.get('value')
+            perp_position = 0.0
+            if positions:
+                for position in positions:
+                    if position.get('symbol') == self.perp_symbol:
+                        perp_position = position.get('size', 0.0)
+                        break
             
             t1 = time.time()
             volatility = self.volatility_calc.calculate_volatility(

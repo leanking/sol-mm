@@ -282,8 +282,7 @@ class PerformanceOptimizer:
         
         return current_interval
     
-    def should_skip_cycle(self, last_cycle_time: float, 
-                         current_volatility: float) -> bool:
+    def should_skip_cycle(self, last_cycle_time: float, current_volatility: float) -> bool:
         """Determine if a cycle should be skipped for performance reasons.
         
         Args:
@@ -293,14 +292,9 @@ class PerformanceOptimizer:
         Returns:
             True if cycle should be skipped
         """
-        # Skip if last cycle took too long
-        if last_cycle_time > 2.0:  # More than 2 seconds
-            return True
-        
-        # Skip if volatility is very low (less need for frequent updates)
+        # Only skip if volatility is very low (less need for frequent updates)
         if current_volatility < 0.01:  # Less than 1%
             return True
-        
         return False
     
     def get_recommendations(self) -> List[str]:

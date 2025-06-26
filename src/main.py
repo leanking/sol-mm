@@ -226,11 +226,7 @@ class MarketMaker:
         Returns:
             True if cycle should be skipped
         """
-        # Skip if last cycle took too long
-        if self.last_cycle_time > 2.0:  # More than 2 seconds
-            self.components['logger'].warning(f"Skipping cycle due to slow execution: {self.last_cycle_time:.2f}s")
-            return True
-        # Always trade: never skip due to low volatility
+        # Never skip due to slow execution
         return False
     
     def collect_performance_stats(self) -> Dict[str, Any]:
