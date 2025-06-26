@@ -336,22 +336,31 @@ class HyperliquidExchange:
                 return None
         return _get_funding_rate()
     
-    def place_order(self, symbol: str, side: str, amount: float, price: float, 
-                   order_type: str = 'limit', market_type: str = 'spot') -> Optional[str]:
-        """Place an order with performance monitoring.
-        
+    def place_order(self, symbol: str, side: str, amount: float, price: float = None, 
+                   order_type: str = 'limit', market_type: str = 'spot',
+                   time_in_force: str = None, post_only: bool = None, reduce_only: bool = None,
+                   trigger_price: float = None, client_order_id: str = None, slippage: str = None,
+                   vault_address: str = None, extra_params: dict = None) -> Optional[str]:
+        """
+        Place an order with full Hyperliquid/CCXT parameter support.
         Args:
             symbol: Trading symbol
             side: 'buy' or 'sell'
             amount: Order amount
-            price: Order price
+            price: Order price (None for market orders)
             order_type: 'limit' or 'market'
             market_type: 'spot' or 'swap'
-            
+            time_in_force: 'Gtc', 'Ioc', 'Alo', etc.
+            post_only: True/False for post-only
+            reduce_only: True/False for reduce-only
+            trigger_price: Trigger price for stop/trigger orders
+            client_order_id: Optional client order id (cloid)
+            slippage: Slippage for market order
+            vault_address: Vault address for subaccount/vault trading
+            extra_params: Any additional params to pass to the API
         Returns:
             Order ID if successful, None otherwise
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('place_order')
         def _place_order():
             try:
@@ -365,24 +374,37 @@ class HyperliquidExchange:
                 if not api_wallet or not api_wallet_private:
                     self.logger.error("API wallet and private key must be set for order signing (see Hyperliquid docs)")
                     return None
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('place_order'):
-                    time.sleep(0.05)  # Wait 50ms
-                # Set market type
+                    time.sleep(0.05)
                 self.exchange.options['defaultType'] = market_type
-                # Place order (API wallet is used for signing, not for queries)
+                # Build params dict for Hyperliquid/CCXT
+                params = extra_params.copy() if extra_params else {}
+                if time_in_force:
+                    params['timeInForce'] = time_in_force
+                if post_only is not None:
+                    params['postOnly'] = post_only
+                if reduce_only is not None:
+                    params['reduceOnly'] = reduce_only
+                if trigger_price is not None:
+                    params['triggerPrice'] = trigger_price
+                if client_order_id:
+                    params['clientOrderId'] = client_order_id
+                if slippage:
+                    params['slippage'] = slippage
+                if vault_address:
+                    params['vaultAddress'] = vault_address
+                # Place order
                 start_time = time.time()
                 order = self.exchange.create_order(
                     symbol=symbol,
                     type=order_type,
                     side=side,
                     amount=amount,
-                    price=price if order_type == 'limit' else None
+                    price=price,
+                    params=params
                 )
                 duration = time.time() - start_time
-                # Record API call timing
                 self.performance_optimizer.record_api_call('place_order', duration)
-                # Reset to spot
                 self.exchange.options['defaultType'] = 'spot'
                 order_id = order.get('id')
                 if order_id:
@@ -393,50 +415,63 @@ class HyperliquidExchange:
                 return None
         return _place_order()
     
-    def cancel_order(self, order_id: str, symbol: str, market_type: str = 'spot') -> bool:
-        """Cancel an order with performance monitoring.
-        
+    def cancel_order(self, order_id: str, symbol: str, market_type: str = 'spot',
+                    asset: int = None, vault_address: str = None, extra_params: dict = None) -> bool:
+        """
+        Cancel an order with full Hyperliquid/CCXT parameter support.
         Args:
             order_id: Order ID to cancel
             symbol: Trading symbol
             market_type: 'spot' or 'swap'
-            
+            asset: Asset index (if required by API)
+            vault_address: Vault address for subaccount/vault cancellation
+            extra_params: Any additional params to pass to the API
         Returns:
             True if successful, False otherwise
         """
-        # Apply performance timing decorator
         @self.performance_optimizer.time_operation('cancel_order')
         def _cancel_order():
             try:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return False
-                
-                # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('cancel_order'):
-                    time.sleep(0.05)  # Wait 50ms
-                
-                # Set market type
+                    time.sleep(0.05)
                 self.exchange.options['defaultType'] = market_type
-                
-                # Cancel order
+                # Build params dict for Hyperliquid/CCXT
+                params = extra_params.copy() if extra_params else {}
+                if asset is not None:
+                    params['a'] = asset
+                if vault_address:
+                    params['vaultAddress'] = vault_address
+                # Hyperliquid expects 'a' (asset) and 'o' (order id) in the cancels list
+                params['cancels'] = [{
+                    'a': asset if asset is not None else symbol,
+                    'o': int(order_id)
+                }]
+                # Place cancel order
                 start_time = time.time()
-                result = self.exchange.cancel_order(order_id, symbol)
+                # Some CCXT implementations use cancel_order, others use create_order with type 'cancel'
+                try:
+                    result = self.exchange.cancel_order(order_id, symbol, params=params)
+                except Exception:
+                    # Fallback to create_order with type 'cancel' if needed
+                    result = self.exchange.create_order(
+                        symbol=symbol,
+                        type='cancel',
+                        side=None,
+                        amount=None,
+                        price=None,
+                        params=params
+                    )
                 duration = time.time() - start_time
-                
-                # Record API call timing
                 self.performance_optimizer.record_api_call('cancel_order', duration)
-                
-                # Reset to spot
                 self.exchange.options['defaultType'] = 'spot'
-                
                 self.logger.info(f"Cancelled order {order_id} for {symbol}")
                 return True
-                
             except Exception as e:
                 self.logger.log_error(e, f"Cancelling order {order_id}")
                 return False
-        
         return _cancel_order()
     
     def get_open_orders(self, symbol: str = None, market_type: str = 'spot') -> Optional[List[Dict[str, Any]]]:
