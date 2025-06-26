@@ -335,30 +335,28 @@ class MarketMakingStrategy:
             Order ID if placed, None otherwise
         """
         try:
+            # Normalize current_perp_size to float
+            current_perp_size = self._normalize_position_size(current_perp_size)
             # Calculate required adjustment
             adjustment = hedge_size - current_perp_size
-            
+            if not isinstance(adjustment, (int, float)):
+                self.logger.warning(f"Unexpected type for adjustment in hedge order: {type(adjustment)}")
+                adjustment = 0.0
             if abs(adjustment) < 0.01:  # Small adjustment threshold
                 return None
-            
             # Get current perp price
             perp_ticker = self.exchange.get_ticker(self.perp_symbol)
             if not perp_ticker:
                 return None
-            
             perp_price = perp_ticker['last']
-            
             # Place hedge order
             side = 'sell' if adjustment < 0 else 'buy'
             order_id = self.exchange.place_order(
                 self.perp_symbol, side, abs(adjustment), perp_price, 'market', 'swap'
             )
-            
             if order_id:
                 self.logger.info(f"Placed hedge order: {side} {abs(adjustment)} {self.perp_symbol}")
-            
             return order_id
-            
         except Exception as e:
             self.logger.log_error(e, "Placing hedge order")
             return None
