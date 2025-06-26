@@ -131,19 +131,17 @@ class HyperliquidExchange:
             return None
     
     def find_solana_markets(self) -> Tuple[Optional[str], Optional[str]]:
-        """Find SOL spot and perpetual markets by symbol, not by hardcoded ID."""
+        """Find USOL/USDC spot and SOL/USDC:USDC perpetual markets strictly."""
         try:
             if not self.connected:
                 self.logger.warning("Exchange not connected")
                 return None, None
 
-            # Log all available spot and swap markets for debugging
             spot_markets = [symbol for symbol, market in self.markets.items() if market.get('type') == 'spot']
             swap_markets = [symbol for symbol, market in self.markets.items() if market.get('type') == 'swap']
             self.logger.info(f"Available spot markets: {spot_markets}")
             self.logger.info(f"Available swap markets: {swap_markets}")
 
-            # Prefer exact matches for USOL/USDC (spot) and SOL/USDC:USDC (perp)
             spot_symbol = None
             perp_symbol = None
 
@@ -151,30 +149,17 @@ class HyperliquidExchange:
                 if symbol.upper() == 'USOL/USDC':
                     spot_symbol = symbol
                     break
-            if not spot_symbol:
-                # Fallback: any spot market containing both USOL and USDC
-                for symbol in spot_markets:
-                    if 'USOL' in symbol.upper() and 'USDC' in symbol.upper():
-                        spot_symbol = symbol
-                        break
-
             for symbol in swap_markets:
                 if symbol.upper() == 'SOL/USDC:USDC':
                     perp_symbol = symbol
                     break
-            if not perp_symbol:
-                # Fallback: any swap market containing both SOL and USDC
-                for symbol in swap_markets:
-                    if 'SOL' in symbol.upper() and 'USDC' in symbol.upper():
-                        perp_symbol = symbol
-                        break
 
             if not spot_symbol:
-                self.logger.warning("No USOL/USDC spot market found")
+                self.logger.error("USOL/USDC spot market not found. Please check available spot markets.")
             else:
                 self.logger.info(f"Found USOL/USDC spot market: {spot_symbol}")
             if not perp_symbol:
-                self.logger.warning("No SOL/USDC:USDC perpetual market found")
+                self.logger.error("SOL/USDC:USDC perpetual market not found. Please check available swap markets.")
             else:
                 self.logger.info(f"Found SOL/USDC:USDC perpetual market: {perp_symbol}")
 
