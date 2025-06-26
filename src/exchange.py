@@ -28,19 +28,23 @@ class HyperliquidExchange:
         """Initialize the CCXT exchange instance."""
         try:
             exchange_config = self.config.get_exchange_config()
-            
+            api_wallet = exchange_config.get('api_wallet')
+            api_wallet_private = exchange_config.get('api_wallet_private')
+            main_wallet = exchange_config.get('main_wallet')
+            # Log credentials (mask private key)
+            masked_private = (api_wallet_private[:4] + '...' + api_wallet_private[-4:]) if api_wallet_private else None
+            self.logger.debug(f"Initializing CCXT: apiKey={api_wallet}, secret(masked)={masked_private}, secret len={len(api_wallet_private) if api_wallet_private else 0}")
             # Initialize CCXT exchange with Hyperliquid-specific configuration
             self.exchange = getattr(ccxt, exchange_config['name'])({
-                'apiKey': exchange_config['api_wallet'],  # API wallet address
-                'secret': exchange_config['api_wallet_private'],  # API wallet private key
-                'wallet': exchange_config['main_wallet'],  # Main wallet address
+                'apiKey': api_wallet,  # API wallet address
+                'secret': api_wallet_private,  # API wallet private key
+                'wallet': main_wallet,  # Main wallet address
                 'sandbox': False,  # Set to True for testing
                 'enableRateLimit': True,
                 'options': {
                     'defaultType': 'spot',  # Default to spot trading
                 }
             })
-            
             self.logger.info(f"Initialized {exchange_config['name']} exchange")
             
         except Exception as e:
@@ -371,6 +375,8 @@ class HyperliquidExchange:
                 exchange_config = self.config.get_exchange_config()
                 api_wallet = exchange_config.get('api_wallet')
                 api_wallet_private = exchange_config.get('api_wallet_private')
+                masked_private = (api_wallet_private[:4] + '...' + api_wallet_private[-4:]) if api_wallet_private else None
+                self.logger.debug(f"Order: apiKey={api_wallet}, secret(masked)={masked_private}, secret repr={repr(api_wallet_private)}, secret len={len(api_wallet_private) if api_wallet_private else 0}")
                 if not api_wallet or not api_wallet_private:
                     self.logger.error("API wallet and private key must be set for order signing (see Hyperliquid docs)")
                     return None
@@ -393,6 +399,7 @@ class HyperliquidExchange:
                     params['slippage'] = slippage
                 if vault_address:
                     params['vaultAddress'] = vault_address
+                self.logger.debug(f"Order params: {params}")
                 # Place order
                 start_time = time.time()
                 order = self.exchange.create_order(
