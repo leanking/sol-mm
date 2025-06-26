@@ -230,12 +230,7 @@ class MarketMaker:
         if self.last_cycle_time > 2.0:  # More than 2 seconds
             self.components['logger'].warning(f"Skipping cycle due to slow execution: {self.last_cycle_time:.2f}s")
             return True
-        
-        # Skip if volatility is very low (less need for frequent updates)
-        if current_volatility < 0.01:  # Less than 1%
-            self.components['logger'].debug(f"Skipping cycle due to low volatility: {current_volatility:.4f}")
-            return True
-        
+        # Always trade: never skip due to low volatility
         return False
     
     def collect_performance_stats(self) -> Dict[str, Any]:
