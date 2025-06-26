@@ -32,6 +32,13 @@ class RiskManager:
         self.logger.warning(f"Tried to call abs() on non-numeric type: {type(value)}, value: {value}")
         return 0.0
     
+    def _safe_fmt(self, value, fmt=".4f"):
+        """Safely format a value as a float if possible, else return str and log a warning."""
+        if isinstance(value, (int, float)):
+            return format(value, fmt)
+        self.logger.warning(f"Tried to format non-numeric type: {type(value)}, value: {value}")
+        return str(value)
+    
     def check_inventory_limits(self, inventory: float) -> Tuple[bool, str]:
         """Check if inventory is within acceptable limits.
         
@@ -44,7 +51,7 @@ class RiskManager:
         max_inventory = self.risk_config.get('max_inventory', 10.0)
         
         if self._safe_abs(inventory) > max_inventory:
-            reason = f"Inventory {inventory:.4f} exceeds limit {max_inventory}"
+            reason = f"Inventory {self._safe_fmt(inventory)} exceeds limit {self._safe_fmt(max_inventory)}"
             return False, reason
         
         return True, ""
@@ -90,7 +97,10 @@ class RiskManager:
             
             # Check if we have enough margin buffer
             if total_margin * margin_buffer > available_balance:
-                reason = f"Insufficient margin: {available_balance:.2f} < {total_margin * margin_buffer:.2f}"
+                reason = (
+                    f"Insufficient margin: {self._safe_fmt(available_balance)} < "
+                    f"{self._safe_fmt(total_margin * margin_buffer)}"
+                )
                 return False, reason
             
             return True, ""
