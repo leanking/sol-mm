@@ -335,13 +335,16 @@ class MarketMakingStrategy:
             Order ID if placed, None otherwise
         """
         try:
-            # Normalize current_perp_size to float
+            self.logger.debug(f"[DEBUG] Raw current_perp_size type: {type(current_perp_size)}, value: {current_perp_size}")
             current_perp_size = self._normalize_position_size(current_perp_size)
+            self.logger.debug(f"[DEBUG] Normalized current_perp_size type: {type(current_perp_size)}, value: {current_perp_size}")
             # Calculate required adjustment
             adjustment = hedge_size - current_perp_size
+            self.logger.debug(f"[DEBUG] Adjustment type: {type(adjustment)}, value: {adjustment}")
             if not isinstance(adjustment, (int, float)):
                 self.logger.warning(f"Unexpected type for adjustment in hedge order: {type(adjustment)}")
                 adjustment = 0.0
+            self.logger.debug(f"[DEBUG] About to call abs() on adjustment type: {type(adjustment)}, value: {adjustment}")
             if abs(adjustment) < 0.01:  # Small adjustment threshold
                 return None
             # Get current perp price
@@ -399,7 +402,10 @@ class MarketMakingStrategy:
             Daily funding income
         """
         try:
+            self.logger.debug(f"[DEBUG] Raw perp_position type: {type(perp_position)}, value: {perp_position}")
+            self.logger.debug(f"[DEBUG] Raw funding_rate type: {type(funding_rate)}, value: {funding_rate}")
             perp_position = self._normalize_position_size(perp_position)
+            self.logger.debug(f"[DEBUG] Normalized perp_position type: {type(perp_position)}, value: {perp_position}")
             # Defensive: ensure funding_rate is a float
             if not isinstance(funding_rate, (int, float)):
                 self.logger.warning(f"Unexpected type for funding_rate in funding income: {type(funding_rate)}")
@@ -411,6 +417,7 @@ class MarketMakingStrategy:
             if not ticker:
                 return 0.0
             current_price = ticker['last']
+            self.logger.debug(f"[DEBUG] About to call abs() on perp_position type: {type(perp_position)}, value: {perp_position}")
             # Calculate funding income (positive for short positions when funding rate is positive)
             funding_income = abs(perp_position) * current_price * funding_rate
             return funding_income
