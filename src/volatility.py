@@ -121,15 +121,18 @@ class VolatilityCalculator:
             # Check OHLCV cache first
             ohlcv = self.get_cached_ohlcv(symbol, timeframe, period + 1)
             if not ohlcv:
-                self.logger.warning(f"No OHLCV data for {symbol} {timeframe} {period+1}")
+                self.logger.debug(f"No cached OHLCV data for {symbol} {timeframe} {period+1}, fetching from exchange...")
             else:
-                self.logger.debug(f"Fetched OHLCV for {symbol}: {ohlcv}")
+                self.logger.debug(f"Using cached OHLCV for {symbol}: {len(ohlcv)} periods")
             
             if not ohlcv:
                 # Fetch OHLCV data
                 ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=period + 1)
                 if ohlcv:
                     self.cache_ohlcv_data(symbol, timeframe, period + 1, ohlcv)
+                    self.logger.debug(f"Successfully fetched and cached OHLCV for {symbol}: {len(ohlcv)} periods")
+                else:
+                    self.logger.warning(f"Failed to fetch OHLCV data for {symbol} {timeframe} {period+1}")
             
             if not ohlcv or len(ohlcv) < period + 1:
                 self.logger.warning(f"Insufficient data for ATR calculation: {len(ohlcv) if ohlcv else 0} < {period + 1}")

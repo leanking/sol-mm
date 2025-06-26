@@ -1,11 +1,12 @@
 import asyncio
 import time
 import threading
+import statistics
 from typing import Dict, List, Optional, Tuple, Any, Callable
 from collections import deque
 import numpy as np
-from logger import MarketMakerLogger
 from config import ConfigManager
+from logger import MarketMakerLogger
 
 class PerformanceOptimizer:
     """Performance optimization utilities for market making system."""

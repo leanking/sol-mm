@@ -71,4 +71,7 @@ secrets.json
 
 # Performance data
 performance_data/
-cache_data/ 
+cache_data/
+
+# Diagnostic scripts
+/diagnose_ohlcv.py 
