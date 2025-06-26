@@ -486,41 +486,32 @@ class HyperliquidExchange:
         return _get_open_orders()
     
     def get_symbol_for_perp(self, spot_symbol: str) -> str:
-        """Convert spot symbol to perpetual symbol for Hyperliquid.
-        
-        Args:
-            spot_symbol: Spot symbol (e.g., 'SOL/USDC')
-            
-        Returns:
-            Perpetual symbol (e.g., 'SOL/USDC:USDC')
-        """
-        # First try to find the actual perpetual market using fetchMarkets
+        """Convert spot symbol to perpetual symbol for Hyperliquid."""
+        # Robust mapping for USOL/USDC <-> SOL/USDC:USDC
         spot_symbol_upper = spot_symbol.upper()
         for symbol, market in self.markets.items():
-            if market.get('type') == 'swap' and spot_symbol_upper in symbol:
+            if market.get('type') == 'swap' and (
+                symbol.upper() == 'SOL/USDC:USDC' or
+                (spot_symbol_upper == 'USOL/USDC' and symbol.upper() == 'SOL/USDC:USDC')
+            ):
                 return symbol
-        
-        # Fallback to default format if not found
+        if spot_symbol_upper == 'USOL/USDC':
+            return 'SOL/USDC:USDC'
         if ':' not in spot_symbol:
             return f"{spot_symbol}:USDC"
         return spot_symbol
     
     def get_symbol_for_spot(self, perp_symbol: str) -> str:
-        """Convert perpetual symbol to spot symbol.
-        
-        Args:
-            perp_symbol: Perpetual symbol (e.g., 'SOL/USDC:USDC')
-            
-        Returns:
-            Spot symbol (e.g., 'SOL/USDC')
-        """
-        # First try to find the actual spot market using fetchMarkets
+        """Convert perpetual symbol to spot symbol."""
         perp_symbol_upper = perp_symbol.upper()
         for symbol, market in self.markets.items():
-            if market.get('type') == 'spot' and perp_symbol_upper.replace(':USDC', '') in symbol:
+            if market.get('type') == 'spot' and (
+                symbol.upper() == 'USOL/USDC' or
+                (perp_symbol_upper == 'SOL/USDC:USDC' and symbol.upper() == 'USOL/USDC')
+            ):
                 return symbol
-        
-        # Fallback to default format if not found
+        if perp_symbol_upper == 'SOL/USDC:USDC':
+            return 'USOL/USDC'
         if ':' in perp_symbol:
             return perp_symbol.split(':')[0]
         return perp_symbol
