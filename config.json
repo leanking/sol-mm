@@ -8,8 +8,8 @@
     "asset": {
       "symbol": "USOL/USDC",
       "price": 143.0,
-      "inventory_size": 10.0,
-      "base_spread": 0.00245,
+      "inventory_size": 20.0,
+      "base_spread": 0.0015,
       "leverage": 10.0
     },
     "fees": {
@@ -20,16 +20,26 @@
     "volatility": {
       "atr_period": 14,
       "timeframe": "1h",
-      "spread_scale_factor": 0.5
+      "spread_scale_factor": 0.3
     },
     "risk": {
-      "max_inventory": 10.0,
-      "max_volatility": 0.24,
-      "margin_buffer": 2.0
+      "max_inventory": 25.0,
+      "max_volatility": 0.30,
+      "margin_buffer": 1.5
     },
     "trading": {
-      "trades_per_day": 100,
-      "update_interval": 2
+      "trades_per_day": 500,
+      "update_interval": 1
+    },
+    "volume": {
+      "target_daily_volume": 1000.0,
+      "min_spread": 0.0005,
+      "max_spread": 0.0050,
+      "spread_aggression": 0.8,
+      "order_tiers": 3,
+      "tier_spacing": 0.0002,
+      "min_order_size": 0.5,
+      "max_order_size": 5.0
     },
     "performance": {
       "enable_caching": true,

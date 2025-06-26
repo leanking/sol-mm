@@ -99,7 +99,7 @@ class RiskManager:
             Tuple of (is_safe, reason)
         """
         trading_config = self.config.get_trading_config()
-        max_trades = trading_config.get('trades_per_day', 100)
+        max_trades = trading_config.get('trades_per_day', 500)  # Increased from 100 to 500
         
         if self.daily_trades >= max_trades:
             reason = f"Daily trade limit reached: {self.daily_trades}/{max_trades}"

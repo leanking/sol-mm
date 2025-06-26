@@ -331,4 +331,43 @@ class PerformanceOptimizer:
                 "Price cache is empty - consider enabling caching for better performance"
             )
         
-        return recommendations 
+        return recommendations
+    
+    def track_volume_metrics(self, daily_volume: float, target_volume: float, 
+                           volume_progress: float, order_count: int) -> None:
+        """Track volume generation metrics.
+        
+        Args:
+            daily_volume: Current daily volume
+            target_volume: Target daily volume
+            volume_progress: Progress towards target (0-1)
+            order_count: Number of orders placed
+        """
+        try:
+            self.volume_metrics = {
+                'daily_volume': daily_volume,
+                'target_volume': target_volume,
+                'volume_progress': volume_progress,
+                'order_count': order_count,
+                'timestamp': time.time()
+            }
+            
+            # Log volume performance
+            if volume_progress > 0.8:
+                self.logger.info(f"Volume target ahead: {volume_progress:.1%} ({daily_volume:.1f}/{target_volume:.1f} SOL)")
+            elif volume_progress < 0.3:
+                self.logger.warning(f"Volume target behind: {volume_progress:.1%} ({daily_volume:.1f}/{target_volume:.1f} SOL)")
+            
+        except Exception as e:
+            self.logger.log_error(e, "Tracking volume metrics")
+    
+    def get_volume_performance(self) -> Dict[str, Any]:
+        """Get volume performance metrics.
+        
+        Returns:
+            Dictionary with volume performance data
+        """
+        if not hasattr(self, 'volume_metrics'):
+            return {}
+        
+        return self.volume_metrics.copy() 

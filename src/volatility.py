@@ -239,7 +239,7 @@ class VolatilityCalculator:
             return 0.0
     
     def adjust_spread(self, base_spread: float, atr: float, scale_factor: float = 0.5) -> float:
-        """Adjust spread based on ATR.
+        """Adjust spread based on ATR with enhanced volume generation.
         
         Args:
             base_spread: Base spread as decimal (e.g., 0.00245 for 0.245%)
@@ -250,11 +250,20 @@ class VolatilityCalculator:
             Adjusted spread as decimal
         """
         try:
-            # Adjust spread: spread = base_spread * (1 + k * atr)
-            adjusted_spread = base_spread * (1 + scale_factor * atr)
+            # Enhanced spread adjustment for volume generation
+            # Reduce spread more aggressively in low volatility conditions
+            if atr < 0.5:  # Very low volatility
+                adjusted_spread = base_spread * 0.6  # Reduce by 40%
+            elif atr < 1.0:  # Low volatility
+                adjusted_spread = base_spread * 0.8  # Reduce by 20%
+            elif atr > 2.0:  # High volatility
+                adjusted_spread = base_spread * (1 + scale_factor * atr * 0.5)  # Moderate increase
+            else:
+                # Normal volatility - use original formula but with reduced impact
+                adjusted_spread = base_spread * (1 + scale_factor * atr * 0.3)
             
-            self.logger.debug(f"Spread adjustment: {base_spread:.6f} -> {adjusted_spread:.6f} "
-                            f"(ATR: {atr:.6f})")
+            self.logger.debug(f"Enhanced spread adjustment: {base_spread:.6f} -> {adjusted_spread:.6f} "
+                            f"(ATR: {atr:.6f}, scale: {scale_factor})")
             
             return adjusted_spread
             

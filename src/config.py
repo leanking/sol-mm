@@ -79,4 +79,8 @@ class ConfigManager:
     
     def get_trading_config(self) -> Dict[str, Any]:
         """Get trading configuration."""
-        return self.config.get('trading', {}) 
+        return self.config.get('trading', {})
+    
+    def get_volume_config(self) -> Dict[str, Any]:
+        """Get volume generation configuration."""
+        return self.config.get('volume', {}) 
