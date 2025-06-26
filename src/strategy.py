@@ -397,6 +397,12 @@ class MarketMakingStrategy:
             elif not isinstance(perp_position, (int, float)):
                 self.logger.warning(f"Unexpected type for perp_position in funding income: {type(perp_position)}")
                 perp_position = 0.0
+            # Defensive: ensure funding_rate is a float
+            if not isinstance(funding_rate, (int, float)):
+                self.logger.warning(f"Unexpected type for funding_rate in funding income: {type(funding_rate)}")
+                funding_rate = 0.0
+            # Log values for debugging
+            self.logger.info(f"Calculating funding income: perp_position={perp_position}, funding_rate={funding_rate}")
             # Get current price for calculation
             ticker = self.exchange.get_ticker(self.spot_symbol)
             if not ticker:
@@ -475,7 +481,8 @@ class MarketMakingStrategy:
                     if position.get('symbol') == self.perp_symbol:
                         perp_position = position.get('size', 0.0)
                         break
-            
+            # Additional logging for debugging
+            self.logger.debug(f"[DEBUG] Pre-funding: perp_position type={type(perp_position)}, value={perp_position}")
             t1 = time.time()
             volatility = self.volatility_calc.calculate_volatility(
                 self.spot_symbol,
@@ -488,7 +495,9 @@ class MarketMakingStrategy:
             funding_rate = self.exchange.get_funding_rate(self.perp_symbol)
             if funding_rate is None:
                 funding_rate = self.config.get('funding_rate_annual', 0.08) / 365
+            self.logger.debug(f"[DEBUG] Pre-funding: funding_rate type={type(funding_rate)}, value={funding_rate}")
             funding_income = self.calculate_funding_income(perp_position, funding_rate)
+            self.logger.debug(f"[DEBUG] Post-funding: funding_income type={type(funding_income)}, value={funding_income}")
             step_times['funding'] = time.time() - t2
             
             t3 = time.time()
