@@ -1,6 +1,9 @@
 {
     "exchange": {
-      "name": "hyperliquid"
+      "name": "hyperliquid",
+      "api_wallet": "",
+      "api_wallet_private": "",
+      "main_wallet": ""
     },
     "asset": {
       "symbol": "SOL/USDC",
