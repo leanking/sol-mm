@@ -6,7 +6,7 @@
       "main_wallet": ""
     },
     "asset": {
-      "symbol": "SOL/USDC",
+      "symbol": "USOL/USDC",
       "price": 143.0,
       "inventory_size": 10.0,
       "base_spread": 0.00245,
