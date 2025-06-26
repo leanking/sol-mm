@@ -358,15 +358,19 @@ class HyperliquidExchange:
                 if not self.connected:
                     self.logger.warning("Exchange not connected")
                     return None
-                
+                # Ensure API wallet and private key are present for signing orders
+                exchange_config = self.config.get_exchange_config()
+                api_wallet = exchange_config.get('api_wallet')
+                api_wallet_private = exchange_config.get('api_wallet_private')
+                if not api_wallet or not api_wallet_private:
+                    self.logger.error("API wallet and private key must be set for order signing (see Hyperliquid docs)")
+                    return None
                 # Rate limiting
                 if not self.performance_optimizer.rate_limit_api_call('place_order'):
                     time.sleep(0.05)  # Wait 50ms
-                
                 # Set market type
                 self.exchange.options['defaultType'] = market_type
-                
-                # Place order
+                # Place order (API wallet is used for signing, not for queries)
                 start_time = time.time()
                 order = self.exchange.create_order(
                     symbol=symbol,
@@ -376,23 +380,17 @@ class HyperliquidExchange:
                     price=price if order_type == 'limit' else None
                 )
                 duration = time.time() - start_time
-                
                 # Record API call timing
                 self.performance_optimizer.record_api_call('place_order', duration)
-                
                 # Reset to spot
                 self.exchange.options['defaultType'] = 'spot'
-                
                 order_id = order.get('id')
                 if order_id:
                     self.logger.log_trade(side, symbol, amount, price, order_id)
-                
                 return order_id
-                
             except Exception as e:
                 self.logger.log_error(e, f"Placing {side} order for {symbol}")
                 return None
-        
         return _place_order()
     
     def cancel_order(self, order_id: str, symbol: str, market_type: str = 'spot') -> bool:
