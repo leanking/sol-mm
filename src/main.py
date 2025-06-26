@@ -315,47 +315,46 @@ class MarketMaker:
             while self.running:
                 try:
                     cycle_count += 1
-                    logger.debug(f"Starting cycle {cycle_count}")
-                    
+                    logger.debug(f"=== Cycle {cycle_count} START ===")
+                    logger.debug(f"Sleeping for {update_interval}s before next cycle...")
                     # Check if we should skip this cycle
                     current_volatility = 0.0  # Will be updated in strategy cycle
                     if self.should_skip_cycle(current_volatility):
+                        logger.debug(f"Cycle {cycle_count} skipped (should_skip_cycle returned True)")
                         time.sleep(update_interval)
                         continue
-                    
+                    logger.debug(f"Cycle {cycle_count}: Running strategy cycle...")
                     # Run strategy cycle
                     success = self.run_single_cycle()
-                    
+                    logger.debug(f"Cycle {cycle_count}: Strategy cycle completed. Success: {success}")
                     if not success:
-                        # If cycle failed, wait longer before retrying
+                        logger.warning(f"Cycle {cycle_count} failed. Waiting {update_interval * 2}s before retrying.")
                         time.sleep(update_interval * 2)
                     else:
                         # Optimize interval based on performance
                         update_interval = self.optimize_update_interval(update_interval)
-                        
-                        # Normal interval
+                        logger.debug(f"Cycle {cycle_count}: Sleeping for {update_interval}s after successful cycle.")
                         time.sleep(update_interval)
-                    
                     # Periodic cleanup and performance logging
                     if cycle_count % 10 == 0:
+                        logger.debug(f"Cycle {cycle_count}: Clearing caches.")
                         self.components['volatility'].clear_cache()
                         self.components['exchange'].clear_performance_cache()
                         logger.debug("Cleared caches")
-                    
                     # Log performance summary every 5 minutes
                     if time.time() - last_performance_log > 300:  # 5 minutes
+                        logger.debug(f"Cycle {cycle_count}: Logging performance summary.")
                         self.log_performance_summary()
                         last_performance_log = time.time()
-                    
+                    logger.debug(f"=== Cycle {cycle_count} END ===")
                 except KeyboardInterrupt:
                     logger.info("Received keyboard interrupt")
                     break
                 except Exception as e:
                     logger.log_error(e, f"Main loop cycle {cycle_count}")
+                    logger.error(f"Exception in main loop cycle {cycle_count}: {e}")
                     time.sleep(update_interval)
-            
             logger.info("Market making loop stopped")
-            
         except Exception as e:
             self.components['logger'].log_error(e, "Main program execution")
         finally:
