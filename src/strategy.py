@@ -381,23 +381,30 @@ class MarketMakingStrategy:
         Args:
             perp_position: Current perp position size (negative for short)
             funding_rate: Current funding rate
-            
+        
         Returns:
             Daily funding income
         """
         try:
+            # Defensive: ensure perp_position is a float
+            if isinstance(perp_position, dict):
+                perp_position = perp_position.get('size', 0.0)
+            elif isinstance(perp_position, list):
+                if perp_position and isinstance(perp_position[0], dict):
+                    perp_position = perp_position[0].get('size', 0.0)
+                else:
+                    perp_position = 0.0
+            elif not isinstance(perp_position, (int, float)):
+                self.logger.warning(f"Unexpected type for perp_position in funding income: {type(perp_position)}")
+                perp_position = 0.0
             # Get current price for calculation
             ticker = self.exchange.get_ticker(self.spot_symbol)
             if not ticker:
                 return 0.0
-            
             current_price = ticker['last']
-            
             # Calculate funding income (positive for short positions when funding rate is positive)
             funding_income = abs(perp_position) * current_price * funding_rate
-            
             return funding_income
-            
         except Exception as e:
             self.logger.log_error(e, "Calculating funding income")
             return 0.0
