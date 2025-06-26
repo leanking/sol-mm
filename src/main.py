@@ -319,9 +319,15 @@ class MarketMaker:
                     cycle_count += 1
                     logger.debug(f"=== Cycle {cycle_count} START ===")
                     logger.debug(f"Sleeping for {update_interval}s before next cycle...")
-                    # Check if we should skip this cycle
-                    current_volatility = 0.0  # Will be updated in strategy cycle
-                    if self.should_skip_cycle(current_volatility):
+                    # Calculate real volatility before skip check
+                    strategy = self.components['strategy']
+                    volatility = self.components['volatility'].calculate_volatility(
+                        strategy.spot_symbol,
+                        strategy.volatility_config.get('atr_period', 14),
+                        strategy.volatility_config.get('timeframe', '1h')
+                    )
+                    logger.debug(f"Cycle {cycle_count}: Measured volatility: {volatility}")
+                    if self.should_skip_cycle(volatility):
                         logger.debug(f"Cycle {cycle_count} skipped (should_skip_cycle returned True)")
                         time.sleep(update_interval)
                         continue
