@@ -1,0 +1,44 @@
+{
+    "exchange": {
+      "name": "hyperliquid"
+    },
+    "asset": {
+      "symbol": "SOL/USDC",
+      "price": 143.0,
+      "inventory_size": 10.0,
+      "base_spread": 0.00245,
+      "leverage": 10.0
+    },
+    "fees": {
+      "spot_maker": 0.000384,
+      "perp_maker": 0.000144
+    },
+    "funding_rate_annual": 0.08,
+    "volatility": {
+      "atr_period": 14,
+      "timeframe": "1h",
+      "spread_scale_factor": 0.5
+    },
+    "risk": {
+      "max_inventory": 10.0,
+      "max_volatility": 0.24,
+      "margin_buffer": 2.0
+    },
+    "trading": {
+      "trades_per_day": 100,
+      "update_interval": 2
+    },
+    "performance": {
+      "enable_caching": true,
+      "price_cache_ttl": 0.1,
+      "order_book_cache_ttl": 0.2,
+      "volatility_cache_ttl": 60,
+      "min_api_interval": 0.05,
+      "max_ticker_response_time": 0.5,
+      "max_order_response_time": 1.0,
+      "max_volatility_calc_time": 0.1,
+      "batch_size": 5,
+      "batch_timeout": 0.1,
+      "performance_log_interval": 300
+    }
+  }
