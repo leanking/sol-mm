@@ -31,6 +31,9 @@ class HyperliquidExchange:
             api_wallet = exchange_config.get('api_wallet')
             api_wallet_private = exchange_config.get('api_wallet_private')
             main_wallet = exchange_config.get('main_wallet')
+            # Strip 0x prefix if present
+            if api_wallet_private and api_wallet_private.startswith('0x'):
+                api_wallet_private = api_wallet_private[2:]
             # Log credentials (mask private key)
             masked_private = (api_wallet_private[:4] + '...' + api_wallet_private[-4:]) if api_wallet_private else None
             self.logger.debug(f"Initializing CCXT: apiKey={api_wallet}, secret(masked)={masked_private}, secret len={len(api_wallet_private) if api_wallet_private else 0}")
@@ -375,6 +378,9 @@ class HyperliquidExchange:
                 exchange_config = self.config.get_exchange_config()
                 api_wallet = exchange_config.get('api_wallet')
                 api_wallet_private = exchange_config.get('api_wallet_private')
+                # Strip 0x prefix if present
+                if api_wallet_private and api_wallet_private.startswith('0x'):
+                    api_wallet_private = api_wallet_private[2:]
                 masked_private = (api_wallet_private[:4] + '...' + api_wallet_private[-4:]) if api_wallet_private else None
                 self.logger.debug(f"Order: apiKey={api_wallet}, secret(masked)={masked_private}, secret repr={repr(api_wallet_private)}, secret len={len(api_wallet_private) if api_wallet_private else 0}")
                 if not api_wallet or not api_wallet_private:
